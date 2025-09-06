@@ -68,33 +68,50 @@ const apiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
            },
          });
          
-         const itemsResponse = await axios.get("https://www.googleapis.com/youtube/v3/playlistItems", {
-           params: {
-             part: "snippet",
-             maxResults: 50,
-             playlistId: playlistId,
-             key: apiKey,
-           },
-         });
+         
+         let allItems = [];
+         let nextPageToken = null;
+         
+         do {
+           const itemsResponse = await axios.get("https://www.googleapis.com/youtube/v3/playlistItems", {
+             params: {
+               part: "snippet",
+               maxResults: 50,
+               playlistId: playlistId,
+               key: apiKey,
+               pageToken: nextPageToken,
+             },
+           });
+           
+           allItems = allItems.concat(itemsResponse.data.items);
+           nextPageToken = itemsResponse.data.nextPageToken;
+         } while (nextPageToken);
          
          
-         const videoIds = itemsResponse.data.items.map(item => item.snippet.resourceId.videoId).join(',');
+         const allVideoDetails = [];
+         const batchSize = 50;
          
-        
-         const videosResponse = await axios.get("https://www.googleapis.com/youtube/v3/videos", {
-           params: {
-             part: "contentDetails",
-             id: videoIds,
-             key: apiKey,
-           },
-         });
+         for (let i = 0; i < allItems.length; i += batchSize) {
+           const batch = allItems.slice(i, i + batchSize);
+           const videoIds = batch.map(item => item.snippet.resourceId.videoId).join(',');
+           
+           const videosResponse = await axios.get("https://www.googleapis.com/youtube/v3/videos", {
+             params: {
+               part: "contentDetails",
+               id: videoIds,
+               key: apiKey,
+             },
+           });
+           
+           allVideoDetails.push(...videosResponse.data.items);
+         }
          
          setPlaylistInfo(playlistResponse.data.items[0]);
          setData({
-           ...itemsResponse.data,
-           videoDetails: videosResponse.data.items
+           items: allItems,
+           videoDetails: allVideoDetails
          });
-         toast.success("Playlist data fetched successfully!");
+         toast.success(`Playlist data fetched successfully! Found ${allItems.length} videos.`);
        } catch (error) {
         console.error("Error fetching data:", error);
         
