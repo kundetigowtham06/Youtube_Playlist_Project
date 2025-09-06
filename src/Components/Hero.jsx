@@ -362,6 +362,7 @@ const Hero = () => {
         </div>
       </div>
       )}
+      <div className="text-center mt-4"><p className="text-gray-500">Developed by KSN</p></div>
     </>
   );
 };
